@@ -1,3 +1,5 @@
 .config/opencode/service.json
 .config/herdr/*
 !.config/herdr/config.toml
+.ai-jail
+.config/DankMaterialShell/plugins/*

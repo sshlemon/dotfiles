@@ -1,0 +1,9 @@
+{
+  "lockfileVersion": 1,
+  "plugins": {
+    "dankscale": {
+      "repo": "https://github.com/dwright134/dms-dankscale",
+      "commit": "bddebf0e2935ba23b0614ff9af5bf8f4ed6d3d9f"
+    }
+  }
+}
