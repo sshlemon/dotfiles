@@ -6,15 +6,13 @@ command = [
     "opencode",
     "--standalone",
 ]
+rw_maps = ["~/.local/share/opencode"]
 ro_maps = [
     "~/.agents/skills",
-    "~/.config/herdr",
-    "~/.config/tuicr",
+    "~/dotfiles/.config/herdr",
+    "~/dotfiles/.config/tuicr",
     "~/.local/bin",
     "~/.local/share/tuicr",
-    "~/.agents/skills",
-    "~/.config/herdr",
-    "~/.config/tuicr",
-    "~/.local/bin",
-    "~/.local/share/tuicr",
+    "~/.config/opencode",
 ]
+network = true

@@ -133,16 +133,18 @@ export PATH=/home/user/.opencode/bin:$PATH
 export PATH=/home/user/.cargo/bin:$PATH
 export PATH="/home/user/.local/bin:$PATH"
 
-alias opencode='HERDR_AGENT=opencode ai-jail --no-status-bar \
-  --env HERDR_ENV --env HERDR_PANE_ID --env HERDR_BIN_PATH --env HERDR_SOCKET_PATH \
+alias opencode='HERDR_AGENT=opencode ai-jail --network --no-status-bar \
+  --env HERDR_ENV --env HERDR_PANE_ID --env HERDR_BIN_PATH --env HERDR_SOCKET_PATH --env VENICE_INFERENCE_KEY \
   --map $HOME/.agents/skills \
-  --map $HOME/.config/herdr \
-  --map $HOME/.config/tuicr \
+  --map $HOME/dotfiles/.config/herdr \
+  --map $HOME/dotfiles/.config/tuicr \
   --map $HOME/.local/bin \
   --map $HOME/.local/share/tuicr \
+  --map $HOME/.config/opencode \
+  --rw-map $HOME/.local/share/opencode \
   -- opencode --standalone'
-export QT_QPA_PLATFORMTHEME=qt6ct
 
+export QT_QPA_PLATFORMTHEME=qt6ct
 export PATH=$PATH:/home/user/.spicetify
 
 
@@ -150,3 +152,4 @@ export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
 
 eval "$(zoxide init --cmd cd zsh)"
 
+[[ -f "$HOME/.config/secrets.env" ]] && source "$HOME/.config/secrets.env"
