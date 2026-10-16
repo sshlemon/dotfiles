@@ -1,0 +1,3 @@
+.config/opencode/service.json
+.config/herdr/*
+!.config/herdr/config.toml

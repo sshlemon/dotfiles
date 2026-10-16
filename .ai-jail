@@ -1,0 +1,20 @@
+# ai-jail sandbox configuration
+# https://github.com/akitaonrails/ai-jail
+# Edit freely. Regenerate with: ai-jail --clean --init
+
+command = [
+    "opencode",
+    "--standalone",
+]
+ro_maps = [
+    "~/.agents/skills",
+    "~/.config/herdr",
+    "~/.config/tuicr",
+    "~/.local/bin",
+    "~/.local/share/tuicr",
+    "~/.agents/skills",
+    "~/.config/herdr",
+    "~/.config/tuicr",
+    "~/.local/bin",
+    "~/.local/share/tuicr",
+]

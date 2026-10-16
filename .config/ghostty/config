@@ -1,0 +1,24 @@
+# Theme
+theme = dark:Catppuccin Mocha,light:Catppuccin Latte
+
+# Font
+font-family = "JetBrainsMono Nerd Font"
+font-size = 14
+font-thicken = true
+
+# Window
+window-padding-x = 12
+window-padding-y = 8
+window-padding-balance = true
+window-decoration = true
+
+# Appearance
+background-opacity = 0.94
+background-blur = 10
+cursor-style = bar
+cursor-style-blink = false
+mouse-hide-while-typing = true
+
+# macOS
+macos-titlebar-style = tabs
+window-colorspace = display-p3   
