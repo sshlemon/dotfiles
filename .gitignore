@@ -3,3 +3,4 @@
 !.config/herdr/config.toml
 .ai-jail
 .config/DankMaterialShell/plugins/*
+.config/DankMaterialShell/plugin_settings.json
