@@ -45,6 +45,7 @@ hl.config({
 	misc = {
 		disable_hyprland_logo = true,
 		disable_splash_rendering = true,
+		anr_missed_pings = 10,
 	},
 	dwindle = {
 		preserve_split = true,
