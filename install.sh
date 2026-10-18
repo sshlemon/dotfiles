@@ -3,8 +3,9 @@
 # install.sh - bootstrap this dotfiles repo on a Fedora machine.
 #
 # Installs the Dank Linux desktop (DankMaterialShell) with its official
-# installer, plus tar, nvim (+ LazyVim deps), oh-my-zsh, fastfetch,
-# powerlevel10k and a Nerd Font, then loads the dotfiles in this repo into $HOME.
+# installer, plus herdr, OpenCode v2, ai-jail, tar, nvim (+ LazyVim deps),
+# oh-my-zsh, fastfetch, powerlevel10k and a Nerd Font, then loads the dotfiles
+# in this repo into $HOME.
 #
 # Usage:
 #   ./install.sh            # install everything, symlink dotfiles into $HOME
@@ -17,6 +18,9 @@ ZSH_DIR="${ZSH:-$HOME/.oh-my-zsh}"
 OMZ_CUSTOM="$ZSH_DIR/custom"
 FONT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 
+# Where the installers below drop their binaries; make them visible to this script.
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+
 # MesloLGS NF is the font powerlevel10k is designed around (see font.md in the
 # bundled theme). Fedora has no Nerd Font package, so it is fetched directly.
 FONT_BASE_URL="https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20"
@@ -27,8 +31,9 @@ usage() {
   cat <<'EOF'
 Bootstrap this dotfiles repo on Fedora.
 
-Installs Dank Linux (DMS + greeter), ghostty, tar, nvim, oh-my-zsh, fastfetch,
-powerlevel10k and MesloLGS NF, then links these dotfiles into $HOME.
+Installs Dank Linux (DMS + greeter), ghostty, herdr (+ the vim-herdr-navigation
+plugin), OpenCode v2, ai-jail, tar, nvim, oh-my-zsh, fastfetch, powerlevel10k
+and MesloLGS NF, then links these dotfiles into $HOME.
 
 Usage: ./install.sh [-n|--dry-run] [-h|--help]
 EOF
@@ -119,10 +124,12 @@ DANK_INSTALLER_URL="https://install.danklinux.com"
 # unattended mode (their COPRs and packages are its business, not ours).
 COMPOSITOR=hyprland
 TERMINAL=ghostty
-# tar, nvim + what LazyVim needs, plus fonts for the shell prompt.
+# tar, nvim + what LazyVim needs, fonts for the shell prompt, and bubblewrap
+# (ai-jail's Linux sandbox backend).
 # zoxide is used by the eval in .zshrc.
 BASE_PKGS=(tar neovim fastfetch zsh git curl zoxide dnf-plugins-core fontconfig
-           ripgrep fd-find gcc make unzip google-noto-color-emoji-fonts)
+           ripgrep fd-find gcc make unzip google-noto-color-emoji-fonts
+           bubblewrap)
 
 install_packages() {
   step "Packages"
@@ -138,6 +145,12 @@ install_packages() {
   done
 
   install_dank_linux
+
+  if command -v bwrap >/dev/null 2>&1; then
+    ok "bubblewrap present (ai-jail's Linux backend)"
+  else
+    warn "bubblewrap missing; ai-jail needs it to sandbox"
+  fi
 }
 
 install_dank_linux() {
@@ -338,6 +351,96 @@ link_dotfiles() {
 }
 
 # ---------------------------------------------------------------------------
+# Tools: herdr (+ its vim navigation plugin), OpenCode v2 and ai-jail
+# ---------------------------------------------------------------------------
+# The plugin's actions are bound to ctrl+h/j/k/l in ~/.config/herdr/config.toml,
+# so this step runs after the dotfiles are in place.
+HERDR_PLUGIN="paulbkim-dev/vim-herdr-navigation"
+# ai-jail publishes prebuilt release binaries, so no Rust toolchain is needed.
+AI_JAIL_REPO="akitaonrails/ai-jail"
+
+install_tools() {
+  step "Agent tools"
+  local plugin="${HERDR_PLUGIN##*/}"
+
+  if command -v herdr >/dev/null 2>&1; then
+    ok "herdr already installed ($(herdr --version 2>/dev/null))"
+  else
+    info "installing herdr"
+    run sh -c "curl -fsSL https://herdr.dev/install.sh | sh"
+  fi
+
+  local oc_version=""
+  if command -v opencode >/dev/null 2>&1; then
+    oc_version="$(opencode --version 2>/dev/null)"
+    oc_version="${oc_version##* }"   # "opencode v2.0.29" -> "v2.0.29"
+  fi
+  if [[ "$oc_version" == v2* ]]; then
+    ok "OpenCode already installed ($oc_version)"
+  elif [[ -n "$oc_version" ]]; then
+    warn "found OpenCode $oc_version; this repo expects v2"
+  else
+    info "installing OpenCode v2"
+    run bash -c "curl -fsSL https://opencode.ai/v2/install | bash"
+  fi
+
+  install_ai_jail
+
+  if ! command -v herdr >/dev/null 2>&1; then
+    warn "herdr is not on PATH; skipping the $plugin plugin"
+    return
+  fi
+  if herdr plugin list 2>/dev/null | grep -q "$plugin"; then
+    ok "$plugin plugin already installed"
+  else
+    info "installing herdr plugin $HERDR_PLUGIN"
+    run herdr plugin install -y "$HERDR_PLUGIN"
+  fi
+}
+
+install_ai_jail() {
+  if command -v ai-jail >/dev/null 2>&1; then
+    ok "ai-jail already installed ($(ai-jail --version 2>/dev/null))"
+    return
+  fi
+  if [[ "$(uname -m)" != x86_64 ]]; then
+    warn "no prebuilt ai-jail for $(uname -m); use 'cargo install --locked ai-jail'"
+    return
+  fi
+
+  local asset="ai-jail-linux-x86_64.tar.gz"
+  local base="https://github.com/$AI_JAIL_REPO/releases/latest/download"
+  local tmp
+  if ((DRY_RUN)); then
+    tmp="${TMPDIR:-/tmp}/ai-jail-install.$$"
+  else
+    tmp="$(mktemp -d)"
+  fi
+
+  info "installing ai-jail"
+  ensure_dir "$tmp"
+  run curl -fsSL -o "$tmp/$asset" "$base/$asset"
+  run curl -fsSL -o "$tmp/$asset.sha256" "$base/$asset.sha256"
+
+  if ((DRY_RUN)); then
+    info "the download is verified against the published .sha256"
+  else
+    local expected actual
+    expected="$(awk '{print $1}' "$tmp/$asset.sha256")"
+    actual="$(sha256sum "$tmp/$asset" | awk '{print $1}')"
+    if [[ -z "$expected" || "$expected" != "$actual" ]]; then
+      rm -rf "$tmp"
+      die "ai-jail checksum mismatch (expected '${expected:-none}', got '$actual')"
+    fi
+  fi
+
+  run tar -xzf "$tmp/$asset" -C "$tmp"
+  ensure_dir "$HOME/.local/bin"
+  run install -m755 "$tmp/ai-jail" "$HOME/.local/bin/ai-jail"
+  run rm -rf "$tmp"
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 summary() {
@@ -348,6 +451,7 @@ summary() {
     2. Run 'p10k configure' to build ~/.p10k.zsh (not tracked in this repo).
     3. Set your terminal font to "MesloLGS NF".
     4. nvim bootstraps LazyVim on first launch (needs network).
+    5. cd into a project and run 'herdr'; run 'opencode' and use /connect for a provider.
 EOF
   if [[ "$HOME" != "/home/user" ]]; then
     warn "this repo's .zshrc hardcodes /home/user/... paths;"
@@ -362,6 +466,7 @@ main() {
   install_fonts
   install_shell
   link_dotfiles
+  install_tools
   summary
 }
 
