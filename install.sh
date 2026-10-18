@@ -2,9 +2,9 @@
 #
 # install.sh - bootstrap this dotfiles repo on a Fedora machine.
 #
-# Installs Dank Linux (DMS, including the greeter), ghostty, tar, nvim
-# (+ LazyVim deps), oh-my-zsh, fastfetch, powerlevel10k and a Nerd Font,
-# then loads the dotfiles in this repo into $HOME.
+# Installs the Dank Linux desktop (DankMaterialShell) with its official
+# installer, plus tar, nvim (+ LazyVim deps), oh-my-zsh, fastfetch,
+# powerlevel10k and a Nerd Font, then loads the dotfiles in this repo into $HOME.
 #
 # Usage:
 #   ./install.sh            # install everything, symlink dotfiles into $HOME
@@ -70,9 +70,7 @@ run() {
 }
 
 # as_root <cmd...>
-as_root() {
-  if ((EUID == 0)); then run "$@"; else run sudo "$@"; fi
-}
+as_root() { run sudo "$@"; }
 
 # mkdir -p, but only when needed and only once per directory (keeps dry-run quiet)
 declare -A _MADE_DIRS=()
@@ -103,7 +101,8 @@ preflight() {
   [[ -f /etc/os-release ]] && id="$(. /etc/os-release && echo "$ID")"
   [[ "$id" == fedora ]] || die "this script targets Fedora (detected: ${id:-unknown})"
   command -v dnf >/dev/null || die "dnf not found"
-  ((EUID == 0)) || command -v sudo >/dev/null || die "sudo is required (or run as root)"
+  ((EUID != 0)) || die "run this as your normal user; the Dank Linux installer refuses to run as root"
+  command -v sudo >/dev/null || die "sudo is required"
   ok "Fedora, repo: $REPO_DIR"
   ((DRY_RUN)) || return 0
   info "dry-run: no changes will be made"
@@ -112,29 +111,24 @@ preflight() {
 # ---------------------------------------------------------------------------
 # Packages
 # ---------------------------------------------------------------------------
-COPR_REPOS=(avengemedia/danklinux avengemedia/dms)
-# DMS (DankMaterialShell) desktop stack, including the greetd login greeter.
-DANK_PKGS=(dms dms-cli dms-greeter danksearch quickshell ghostty)
+# What the Dank stack has to have before we consider it installed.
+DANK_MARKERS=(dms dms-cli dms-greeter ghostty)
+# Official Dank Linux installer; brings in DMS plus its deps.
+DANK_INSTALLER_URL="https://install.danklinux.com"
+# This desktop is built around Hyprland + ghostty. dankinstall needs both for
+# unattended mode (their COPRs and packages are its business, not ours).
+COMPOSITOR=hyprland
+TERMINAL=ghostty
 # tar, nvim + what LazyVim needs, plus fonts for the shell prompt.
-BASE_PKGS=(tar neovim fastfetch zsh git curl dnf-plugins-core fontconfig
+# zoxide is used by the eval in .zshrc.
+BASE_PKGS=(tar neovim fastfetch zsh git curl zoxide dnf-plugins-core fontconfig
            ripgrep fd-find gcc make unzip google-noto-color-emoji-fonts)
 
 install_packages() {
   step "Packages"
 
-  local repo
-  for repo in "${COPR_REPOS[@]}"; do
-    # copr writes /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:<owner>:<name>.repo
-    if ls /etc/yum.repos.d/ 2>/dev/null | grep -q "${repo//\//:}"; then
-      ok "copr '${repo}' already enabled"
-    else
-      info "enabling copr '${repo}'"
-      as_root dnf copr enable -y "$repo"
-    fi
-  done
-
   local pkg
-  for pkg in "${BASE_PKGS[@]}" "${DANK_PKGS[@]}"; do
+  for pkg in "${BASE_PKGS[@]}"; do
     if rpm -q "$pkg" >/dev/null 2>&1; then
       ok "$pkg already installed"
     else
@@ -142,6 +136,29 @@ install_packages() {
       as_root dnf install -y "$pkg"
     fi
   done
+
+  install_dank_linux
+}
+
+install_dank_linux() {
+  local pkg missing=0
+  for pkg in "${DANK_MARKERS[@]}"; do
+    rpm -q "$pkg" >/dev/null 2>&1 || missing=1
+  done
+  if ((missing == 0)); then
+    ok "Dank Linux already installed (${DANK_MARKERS[*]})"
+    return
+  fi
+
+  # Prime sudo so the installer's headless mode has cached credentials.
+  as_root -v
+
+  # --compositor and --term together switch it to unattended mode; -y confirms.
+  # Deliberately no --replace-configs*: this repo owns ~/.config, and the
+  # dotfiles step below puts its own configs in place.
+  info "installing Dank Linux (compositor: $COMPOSITOR, terminal: $TERMINAL)"
+  run sh -c "curl -fsSL $DANK_INSTALLER_URL | sh -s -- \
+--compositor $COMPOSITOR --term $TERMINAL -y --dms-greeter --danksearch"
 }
 
 # ---------------------------------------------------------------------------
