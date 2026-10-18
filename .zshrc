@@ -136,12 +136,13 @@ export PATH="/home/user/.local/bin:$PATH"
 alias opencode='HERDR_AGENT=opencode ai-jail --network --no-status-bar \
   --env HERDR_ENV --env HERDR_PANE_ID --env HERDR_BIN_PATH --env HERDR_SOCKET_PATH --env VENICE_INFERENCE_KEY \
   --map $HOME/.agents/skills \
-  --map $HOME/dotfiles/.config/herdr \
+  --map "$HOME/dotfiles/.config/herdr:$HOME/.config/herdr" \
   --map $HOME/dotfiles/.config/tuicr \
   --map $HOME/.local/bin \
   --map $HOME/.local/share/tuicr \
   --map $HOME/.config/opencode \
   --rw-map $HOME/.local/share/opencode \
+  --rw-map $HOME/.mitmproxy \
   -- opencode --standalone'
 
 export QT_QPA_PLATFORMTHEME=qt6ct
