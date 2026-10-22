@@ -1,0 +1,16 @@
+{
+  "lastChangelogVersion": "1.4.0",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "kimi-k3",
+  "packages": [
+    "npm:pi-web-access",
+    "npm:pi-subagents",
+    "npm:@gotgenes/pi-permission-system",
+    "npm:@narumitw/pi-plan-mode",
+    "npm:@narumitw/pi-lsp",
+    "npm:pi-smart-compact"
+  ],
+  "smartCompact": {
+    "minContextPercent": 30
+  }
+}
